@@ -27,7 +27,7 @@ class PlaylistsService {
     }
   }
 
-  async _verifyPlaylistAccess({ playlistId, credentialId }) {
+  async verifyPlaylistAccess({ playlistId, credentialId }) {
     const query = {
       text: `SELECT *
               FROM playlists AS p
@@ -79,9 +79,21 @@ class PlaylistsService {
     return result.rows;
   }
 
-  async addSongToPlaylist({ songId, playlistId, credentialId }) {
-    await this._verifyPlaylistAccess({ playlistId, credentialId });
+  async deletePlaylistById({ playlistId, credentialId }) {
+    await this.verifyPlaylistOwnership({ playlistId, credentialId });
+    const query = {
+      text: 'DELETE FROM playlists WHERE id = $1 AND owner = $2 RETURNING id',
+      values: [playlistId, credentialId],
+    };
 
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new NotFoundError('Playlist gagal dihapus. Playlist tidak ditemukan');
+    }
+  }
+
+  async postSongToPlaylist({ songId, playlistId }) {
     const getSongQuery = {
       text: 'SELECT * FROM songs WHERE id = $1',
       values: [songId],
@@ -95,12 +107,12 @@ class PlaylistsService {
 
     const id = `playlist-${nanoid(16)}`;
 
-    const addSongToPlaylistQuery = {
+    const postSongToPlaylistQuery = {
       text: 'INSERT INTO playlistsongs VALUES($1, $2, $3) RETURNING id',
       values: [id, playlistId, songId],
     };
 
-    const result = await this._pool.query(addSongToPlaylistQuery);
+    const result = await this._pool.query(postSongToPlaylistQuery);
 
     if (!result.rows[0].id) {
       throw new InvariantError('Lagu gagal ditambahkan ke playlist');
@@ -108,8 +120,6 @@ class PlaylistsService {
   }
 
   async getSongsInPlaylist({ playlistId, credentialId }) {
-    await this._verifyPlaylistAccess({ playlistId, credentialId });
-
     const query = {
       text: `SELECT s.*
               FROM songs as s
@@ -133,8 +143,7 @@ class PlaylistsService {
     }
   }
 
-  async deleteSongInPlaylist({ playlistId, songId, credentialId }) {
-    await this._verifyPlaylistAccess({ playlistId, credentialId });
+  async deleteSongInPlaylist({ playlistId, songId }) {
     const query = {
       text: `DELETE 
               FROM playlistsongs
@@ -151,20 +160,6 @@ class PlaylistsService {
       }
     } catch (e) {
       throw new InvariantError('Lagu gagal dihapus dari playlist');
-    }
-  }
-
-  async deletePlaylistById({ playlistId, credentialId }) {
-    await this.verifyPlaylistOwnership({ playlistId, credentialId });
-    const query = {
-      text: 'DELETE FROM playlists WHERE id = $1 AND owner = $2 RETURNING id',
-      values: [playlistId, credentialId],
-    };
-
-    const result = await this._pool.query(query);
-
-    if (!result.rows.length) {
-      throw new NotFoundError('Playlist gagal dihapus. Playlist tidak ditemukan');
     }
   }
 }

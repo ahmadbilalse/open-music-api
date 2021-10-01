@@ -26,7 +26,7 @@ const routes = (handler) => [
   {
     method: 'POST',
     path: '/playlists/{playlistId}/songs',
-    handler: handler.addSongToPlaylistHandler,
+    handler: handler.postSongToPlaylistHandler,
     options: {
       auth: 'musicapp_jwt',
     },
