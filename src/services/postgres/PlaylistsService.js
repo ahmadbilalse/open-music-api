@@ -6,8 +6,9 @@ const AuthorizationError = require('../../exceptions/AuthorizationError');
 // const { mapDBToModel } = require('../../utils');
 
 class PlaylistsService {
-  constructor() {
+  constructor(cacheService) {
     this._pool = new Pool();
+    this._cacheService = cacheService;
   }
 
   async verifyPlaylistOwnership({ playlistId, credentialId }) {
@@ -93,7 +94,7 @@ class PlaylistsService {
     }
   }
 
-  async postSongToPlaylist({ songId, playlistId }) {
+  async postSongToPlaylist({ songId, playlistId, credentialId }) {
     const getSongQuery = {
       text: 'SELECT * FROM songs WHERE id = $1',
       values: [songId],
@@ -117,6 +118,8 @@ class PlaylistsService {
     if (!result.rows[0].id) {
       throw new InvariantError('Lagu gagal ditambahkan ke playlist');
     }
+
+    await this._cacheService.delete(`playlistsong:${credentialId}`);
   }
 
   async getSongsInPlaylist({ playlistId, credentialId }) {
@@ -143,7 +146,7 @@ class PlaylistsService {
     }
   }
 
-  async deleteSongInPlaylist({ playlistId, songId }) {
+  async deleteSongInPlaylist({ playlistId, songId, credentialId }) {
     const query = {
       text: `DELETE 
               FROM playlistsongs
@@ -158,6 +161,7 @@ class PlaylistsService {
       if (result.rows.length < 1) {
         throw new NotFoundError('Lagu tidak ditemukan');
       }
+      await this._cacheService.delete(`playlistsong:${credentialId}`);
     } catch (e) {
       throw new InvariantError('Lagu gagal dihapus dari playlist');
     }

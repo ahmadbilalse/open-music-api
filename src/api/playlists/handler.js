@@ -1,7 +1,8 @@
 class PlaylistsHandler {
-  constructor(service, validator) {
+  constructor(service, validator, cacheService) {
     this._service = service;
     this._validator = validator;
+    this._cacheService = cacheService;
 
     this.postPlaylistHandler = this.postPlaylistHandler.bind(this);
     this.getPlaylistsHandler = this.getPlaylistsHandler.bind(this);
@@ -81,18 +82,31 @@ class PlaylistsHandler {
     const { playlistId } = request.params;
 
     await this._service.verifyPlaylistAccess({ playlistId, credentialId });
-    const songs = await this._service.getSongsInPlaylist({ playlistId, credentialId });
 
-    return {
-      status: 'success',
-      data: {
-        songs: songs.map((song) => ({
-          id: song.id,
-          title: song.title,
-          performer: song.performer,
-        })),
-      },
-    };
+    try {
+      const result = await this._cacheService.get(`playlistsong:${credentialId}`);
+      return {
+        status: 'success',
+        data: {
+          songs: JSON.parse(result),
+        },
+      };
+    } catch (e) {
+      const songs = await this._service.getSongsInPlaylist({ playlistId, credentialId });
+      const mappedSongs = songs.map((song) => ({
+        id: song.id,
+        title: song.title,
+        performer: song.performer,
+      }));
+      await this._cacheService.set(`playlistsong:${credentialId}`, JSON.stringify(mappedSongs));
+
+      return {
+        status: 'success',
+        data: {
+          songs: mappedSongs,
+        },
+      };
+    }
   }
 
   async deleteSongInPlaylistHandler(request) {
