@@ -47,11 +47,7 @@ class PlaylistsHandler {
     return {
       status: 'success',
       data: {
-        playlists: playlists.map((playlist) => ({
-          id: playlist.id,
-          name: playlist.name,
-          username: playlist.username,
-        })),
+        playlists,
       },
     };
   }
@@ -102,17 +98,12 @@ class PlaylistsHandler {
       };
     } catch (e) {
       const songs = await this._service.getSongsInPlaylist({ playlistId, credentialId });
-      const mappedSongs = songs.map((song) => ({
-        id: song.id,
-        title: song.title,
-        performer: song.performer,
-      }));
-      await this._cacheService.set(`${playlistsongsCacheKey}:${credentialId}`, JSON.stringify(mappedSongs));
+      await this._cacheService.set(`${playlistsongsCacheKey}:${credentialId}`, JSON.stringify(songs));
 
       return {
         status: 'success',
         data: {
-          songs: mappedSongs,
+          songs,
         },
       };
     }

@@ -4,7 +4,6 @@ const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 const { playlistsCacheKey, playlistsongsCacheKey } = require('../redis/constants');
-// const { mapDBToModel } = require('../../utils');
 
 class PlaylistsService {
   constructor(cacheService) {
@@ -92,7 +91,7 @@ class PlaylistsService {
 
     const result = await this._pool.query(query);
 
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Playlist gagal dihapus. Playlist tidak ditemukan');
     }
 
@@ -129,7 +128,7 @@ class PlaylistsService {
 
   async getSongsInPlaylist({ playlistId, credentialId }) {
     const query = {
-      text: `SELECT s.*
+      text: `SELECT s.id, s.title, s.performer
               FROM songs as s
               INNER JOIN
               playlistsongs as ps
@@ -159,7 +158,7 @@ class PlaylistsService {
     };
     try {
       const result = await this._pool.query(query);
-      if (result.rows.length < 1) {
+      if (result.rowCount < 1) {
         throw new NotFoundError('Lagu tidak ditemukan');
       }
       await this._cacheService.delete(`${playlistsongsCacheKey}:${credentialId}`);
