@@ -3,10 +3,16 @@ const { nanoid } = require('nanoid');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDBToModel } = require('../../utils');
+const { songsCacheKey } = require('../redis/constants');
 
 class SongService {
-  constructor() {
+  constructor(cacheService) {
     this._pool = new Pool();
+    this._cacheService = cacheService;
+    this._clearCache = async function _clearCache(songId) {
+      await this._cacheService.delete(`${songsCacheKey}`);
+      await this._cacheService.delete(`${songsCacheKey}:${songId}`);
+    };
   }
 
   async addSong({ title, year, performer, genre, duration }) {
@@ -24,6 +30,8 @@ class SongService {
     if (!result.rows[0].id) {
       throw new InvariantError('Lagu gagal ditambahkan');
     }
+
+    await this._cacheService.delete(`${songsCacheKey}`);
 
     return result.rows[0].id;
   }
@@ -59,6 +67,8 @@ class SongService {
     if (!result.rows.length) {
       throw new NotFoundError('Gagal memperbarui lagu. Id tidak ditemukan');
     }
+
+    await this._clearCache(id);
   }
 
   async deleteSongById(id) {
@@ -72,6 +82,8 @@ class SongService {
     if (!result.rows.length) {
       throw new NotFoundError('Lagu gagal dihapus. Id tidak ditemukan');
     }
+
+    await this._clearCache(id);
   }
 }
 

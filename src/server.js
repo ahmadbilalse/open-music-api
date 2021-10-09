@@ -50,7 +50,7 @@ const CacheService = require('./services/redis/CacheService');
 
 const init = async () => {
   const cacheService = new CacheService();
-  const songService = new SongService();
+  const songService = new SongService(cacheService);
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
   const playlistsService = new PlaylistsService(cacheService);
@@ -100,6 +100,7 @@ const init = async () => {
       options: {
         service: songService,
         validator: SongValidator,
+        cacheService,
       },
     },
     {

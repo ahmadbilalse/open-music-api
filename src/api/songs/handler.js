@@ -1,7 +1,10 @@
+const { songsCacheKey } = require('../../services/redis/constants');
+
 class SongsHandler {
-  constructor(service, validator) {
+  constructor(service, validator, cacheService) {
     this._service = service;
     this._validator = validator;
+    this._cacheService = cacheService;
 
     this.postSongHandler = this.postSongHandler.bind(this);
     this.getSongsHandler = this.getSongsHandler.bind(this);
@@ -28,7 +31,15 @@ class SongsHandler {
   }
 
   async getSongsHandler() {
-    const songs = await this._service.getSongs();
+    let songs;
+
+    try {
+      songs = await this._cacheService.get(`${songsCacheKey}`);
+      songs = JSON.parse(songs);
+    } catch (e) {
+      songs = await this._service.getSongs();
+    }
+
     return {
       status: 'success',
       data: {
@@ -43,7 +54,16 @@ class SongsHandler {
 
   async getSongByIdHandler(request) {
     const { id } = request.params;
-    const song = await this._service.getSongById(id);
+
+    let song;
+
+    try {
+      song = await this._cacheService.get(`${songsCacheKey}:${id}`);
+      song = JSON.parse(song);
+    } catch (e) {
+      song = await this._service.getSongById(id);
+    }
+
     return {
       status: 'success',
       data: {
