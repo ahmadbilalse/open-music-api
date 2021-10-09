@@ -38,6 +38,7 @@ class SongsHandler {
       songs = JSON.parse(songs);
     } catch (e) {
       songs = await this._service.getSongs();
+      await this._cacheService.set(`${songsCacheKey}`, JSON.stringify(songs));
     }
 
     return {
@@ -58,6 +59,7 @@ class SongsHandler {
       song = JSON.parse(song);
     } catch (e) {
       song = await this._service.getSongById(id);
+      await this._cacheService.set(`${songsCacheKey}:${id}`, JSON.stringify(song));
     }
 
     return {

@@ -89,7 +89,7 @@ class PlaylistsHandler {
     await this._service.verifyPlaylistAccess({ playlistId, credentialId });
 
     try {
-      const result = await this._cacheService.get(`${playlistsongsCacheKey}:${credentialId}`);
+      const result = await this._cacheService.get(`${playlistsongsCacheKey}:${playlistId}`);
       return {
         status: 'success',
         data: {
@@ -98,7 +98,7 @@ class PlaylistsHandler {
       };
     } catch (e) {
       const songs = await this._service.getSongsInPlaylist({ playlistId, credentialId });
-      await this._cacheService.set(`${playlistsongsCacheKey}:${credentialId}`, JSON.stringify(songs));
+      await this._cacheService.set(`${playlistsongsCacheKey}:${playlistId}`, JSON.stringify(songs));
 
       return {
         status: 'success',
