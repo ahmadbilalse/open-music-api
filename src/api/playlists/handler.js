@@ -1,3 +1,5 @@
+const { playlistsCacheKey, playlistsongsCacheKey } = require('../../services/redis/constants');
+
 class PlaylistsHandler {
   constructor(service, validator, cacheService) {
     this._service = service;
@@ -32,8 +34,15 @@ class PlaylistsHandler {
 
   async getPlaylistsHandler(request) {
     const { id: credentialId } = request.auth.credentials;
+    let playlists;
 
-    const playlists = await this._service.getPlaylists({ credentialId });
+    try {
+      playlists = await this._cacheService.get(`${playlistsCacheKey}:${credentialId}`);
+      playlists = JSON.parse(playlists);
+    } catch (e) {
+      playlists = await this._service.getPlaylists({ credentialId });
+      await this._cacheService.set(`${playlistsCacheKey}:${credentialId}`, JSON.stringify(playlists));
+    }
 
     return {
       status: 'success',
@@ -84,7 +93,7 @@ class PlaylistsHandler {
     await this._service.verifyPlaylistAccess({ playlistId, credentialId });
 
     try {
-      const result = await this._cacheService.get(`playlistsong:${credentialId}`);
+      const result = await this._cacheService.get(`${playlistsongsCacheKey}:${credentialId}`);
       return {
         status: 'success',
         data: {
@@ -98,7 +107,7 @@ class PlaylistsHandler {
         title: song.title,
         performer: song.performer,
       }));
-      await this._cacheService.set(`playlistsong:${credentialId}`, JSON.stringify(mappedSongs));
+      await this._cacheService.set(`${playlistsongsCacheKey}:${credentialId}`, JSON.stringify(mappedSongs));
 
       return {
         status: 'success',

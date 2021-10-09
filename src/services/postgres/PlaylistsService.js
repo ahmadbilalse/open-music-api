@@ -3,6 +3,7 @@ const { nanoid } = require('nanoid');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
+const { playlistsCacheKey, playlistsongsCacheKey } = require('../redis/constants');
 // const { mapDBToModel } = require('../../utils');
 
 class PlaylistsService {
@@ -61,6 +62,8 @@ class PlaylistsService {
       throw new InvariantError('Playlist gagal ditambahkan');
     }
 
+    await this._cacheService.delete(`${playlistsCacheKey}:${owner}`);
+
     return result.rows[0].id;
   }
 
@@ -92,6 +95,8 @@ class PlaylistsService {
     if (!result.rows.length) {
       throw new NotFoundError('Playlist gagal dihapus. Playlist tidak ditemukan');
     }
+
+    await this._cacheService.delete(`${playlistsCacheKey}:${credentialId}`);
   }
 
   async postSongToPlaylist({ songId, playlistId, credentialId }) {
@@ -119,7 +124,7 @@ class PlaylistsService {
       throw new InvariantError('Lagu gagal ditambahkan ke playlist');
     }
 
-    await this._cacheService.delete(`playlistsong:${credentialId}`);
+    await this._cacheService.delete(`${playlistsongsCacheKey}:${credentialId}`);
   }
 
   async getSongsInPlaylist({ playlistId, credentialId }) {
@@ -138,12 +143,8 @@ class PlaylistsService {
               `,
       values: [credentialId, playlistId],
     };
-    try {
-      const result = await this._pool.query(query);
-      return result.rows;
-    } catch (e) {
-      throw new InvariantError('Lagu gagal ditambahkan ke playlist');
-    }
+    const result = await this._pool.query(query);
+    return result.rows;
   }
 
   async deleteSongInPlaylist({ playlistId, songId, credentialId }) {
@@ -161,7 +162,7 @@ class PlaylistsService {
       if (result.rows.length < 1) {
         throw new NotFoundError('Lagu tidak ditemukan');
       }
-      await this._cacheService.delete(`playlistsong:${credentialId}`);
+      await this._cacheService.delete(`${playlistsongsCacheKey}:${credentialId}`);
     } catch (e) {
       throw new InvariantError('Lagu gagal dihapus dari playlist');
     }
