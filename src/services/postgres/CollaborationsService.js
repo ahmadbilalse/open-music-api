@@ -7,9 +7,9 @@ class CollaborationsService {
   constructor(cacheService) {
     this._pool = new Pool();
     this._cacheService = cacheService;
-    this._clearCache = async function _clearCache(userId) {
+    this._clearCache = async function _clearCache(userId, playlistId) {
       await this._cacheService.delete(`${playlistsCacheKey}:${userId}`);
-      await this._cacheService.delete(`${playlistsongsCacheKey}:${userId}`);
+      await this._cacheService.delete(`${playlistsongsCacheKey}:${playlistId}`);
     };
   }
 
@@ -27,7 +27,7 @@ class CollaborationsService {
       throw new InvariantError('Kolaborasi gagal ditambahkan');
     }
 
-    await this._clearCache(userId);
+    await this._clearCache(userId, playlistId);
 
     return result.rows[0].id;
   }
@@ -44,7 +44,7 @@ class CollaborationsService {
       throw new InvariantError('Kolaborasi gagal dihapus');
     }
 
-    await this._clearCache(userId);
+    await this._clearCache(userId, playlistId);
   }
 }
 

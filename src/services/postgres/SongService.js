@@ -9,10 +9,6 @@ class SongService {
   constructor(cacheService) {
     this._pool = new Pool();
     this._cacheService = cacheService;
-    this._clearCache = async function _clearCache(songId) {
-      await this._cacheService.delete(`${songsCacheKey}`);
-      await this._cacheService.delete(`${songsCacheKey}:${songId}`);
-    };
   }
 
   async addSong({ title, year, performer, genre, duration }) {
@@ -68,7 +64,7 @@ class SongService {
       throw new NotFoundError('Gagal memperbarui lagu. Id tidak ditemukan');
     }
 
-    await this._clearCache(id);
+    await this._cacheService.flush();
   }
 
   async deleteSongById(id) {
@@ -83,7 +79,7 @@ class SongService {
       throw new NotFoundError('Lagu gagal dihapus. Id tidak ditemukan');
     }
 
-    await this._clearCache(id);
+    await this._cacheService.flush();
   }
 }
 
