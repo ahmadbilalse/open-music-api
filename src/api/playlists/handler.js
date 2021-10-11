@@ -1,7 +1,10 @@
+const { playlistsCacheKey, playlistsongsCacheKey } = require('../../services/redis/constants');
+
 class PlaylistsHandler {
-  constructor(service, validator) {
+  constructor(service, validator, cacheService) {
     this._service = service;
     this._validator = validator;
+    this._cacheService = cacheService;
 
     this.postPlaylistHandler = this.postPlaylistHandler.bind(this);
     this.getPlaylistsHandler = this.getPlaylistsHandler.bind(this);
@@ -31,17 +34,20 @@ class PlaylistsHandler {
 
   async getPlaylistsHandler(request) {
     const { id: credentialId } = request.auth.credentials;
+    let playlists;
 
-    const playlists = await this._service.getPlaylists({ credentialId });
+    try {
+      playlists = await this._cacheService.get(`${playlistsCacheKey}:${credentialId}`);
+      playlists = JSON.parse(playlists);
+    } catch (e) {
+      playlists = await this._service.getPlaylists({ credentialId });
+      await this._cacheService.set(`${playlistsCacheKey}:${credentialId}`, JSON.stringify(playlists));
+    }
 
     return {
       status: 'success',
       data: {
-        playlists: playlists.map((playlist) => ({
-          id: playlist.id,
-          name: playlist.name,
-          username: playlist.username,
-        })),
+        playlists,
       },
     };
   }
@@ -81,18 +87,26 @@ class PlaylistsHandler {
     const { playlistId } = request.params;
 
     await this._service.verifyPlaylistAccess({ playlistId, credentialId });
-    const songs = await this._service.getSongsInPlaylist({ playlistId, credentialId });
 
-    return {
-      status: 'success',
-      data: {
-        songs: songs.map((song) => ({
-          id: song.id,
-          title: song.title,
-          performer: song.performer,
-        })),
-      },
-    };
+    try {
+      const result = await this._cacheService.get(`${playlistsongsCacheKey}:${playlistId}`);
+      return {
+        status: 'success',
+        data: {
+          songs: JSON.parse(result),
+        },
+      };
+    } catch (e) {
+      const songs = await this._service.getSongsInPlaylist({ playlistId, credentialId });
+      await this._cacheService.set(`${playlistsongsCacheKey}:${playlistId}`, JSON.stringify(songs));
+
+      return {
+        status: 'success',
+        data: {
+          songs,
+        },
+      };
+    }
   }
 
   async deleteSongInPlaylistHandler(request) {

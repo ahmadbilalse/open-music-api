@@ -1,10 +1,16 @@
 const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
 const InvariantError = require('../../exceptions/InvariantError');
+const { playlistsCacheKey, playlistsongsCacheKey } = require('../redis/constants');
 
 class CollaborationsService {
-  constructor() {
+  constructor(cacheService) {
     this._pool = new Pool();
+    this._cacheService = cacheService;
+    this._clearCache = async function _clearCache(userId, playlistId) {
+      await this._cacheService.delete(`${playlistsCacheKey}:${userId}`);
+      await this._cacheService.delete(`${playlistsongsCacheKey}:${playlistId}`);
+    };
   }
 
   async addCollaboration(playlistId, userId) {
@@ -17,9 +23,12 @@ class CollaborationsService {
 
     const result = await this._pool.query(query);
 
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new InvariantError('Kolaborasi gagal ditambahkan');
     }
+
+    await this._clearCache(userId, playlistId);
+
     return result.rows[0].id;
   }
 
@@ -31,9 +40,11 @@ class CollaborationsService {
 
     const result = await this._pool.query(query);
 
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new InvariantError('Kolaborasi gagal dihapus');
     }
+
+    await this._clearCache(userId, playlistId);
   }
 }
 
